@@ -14,9 +14,9 @@ export default {
       // 初始化节点，设置随机位置和速度，固定位置为null
       nodes: data.nodes.map(node => ({
         ...node,
-        x: Math.random() * 800,
+        x: Math.random() * 800, // 随机位置
         y: Math.random() * 600,
-        vx: 0,
+        vx: 0,  // 速度
         vy: 0,
         fx: null,
         fy: null
@@ -52,6 +52,7 @@ export default {
 
       // 模拟步骤函数
       const simulationStep = () => {
+        // 计算连线的力
         this.links.forEach(link => {
           const source = this.nodes.find(n => n.id === link.source);
           const target = this.nodes.find(n => n.id === link.target);
@@ -72,6 +73,31 @@ export default {
             target.vx -= fx;
             target.vy -= fy;
           }
+        });
+
+        // 防止节点重叠逻辑
+        this.nodes.forEach((nodeA, i) => {
+          this.nodes.forEach((nodeB, j) => {
+            if (i >= j) return; // 避免重复计算
+            const dx = nodeB.x - nodeA.x;
+            const dy = nodeB.y - nodeA.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < 20) { // 最小距离20
+              const angle = Math.atan2(dy, dx);
+              const moveDistance = (20 - distance) / 2;
+              const moveX = Math.cos(angle) * moveDistance;
+              const moveY = Math.sin(angle) * moveDistance;
+              
+              if (!nodeA.fx) {
+                nodeA.x -= moveX;
+                nodeA.y -= moveY;
+              }
+              if (!nodeB.fx) {
+                nodeB.x += moveX;
+                nodeB.y += moveY;
+              }
+            }
+          });
         });
 
         // 更新节点位置和速度
