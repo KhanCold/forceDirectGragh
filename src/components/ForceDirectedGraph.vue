@@ -12,13 +12,13 @@ export default {
   data() {
     return {
       // 初始化节点，设置随机位置和速度，固定位置为null
-      nodes: data.nodes.map(node => ({
+      nodes: data.nodes.map(node => ({//展开节点数据，添加随机位置和速度
         ...node,
         x: Math.random() * 800, // 随机位置
         y: Math.random() * 600,
         vx: 0,  // 速度
         vy: 0,
-        fx: null,
+        fx: null,// 是否固定位置
         fy: null
       })),
       // 初始化连接
@@ -26,7 +26,7 @@ export default {
       width: 800,
       height: 600,
       draggingNode: null,  // 当前拖动的节点
-      transform: {
+      transform: {// 画布平移和缩放
         x: 0,
         y: 0,
         k: 1
@@ -36,12 +36,12 @@ export default {
     };
   },
   mounted() {
-    this.createForceDirectedGraph();  // 在组件挂载后创建力导向图
+    this.createForceDirectedGraph();
   },
   methods: {
-    createForceDirectedGraph() {
+    createForceDirectedGraph() { // 创建力导向图
       const canvas = this.$refs.canvas;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d");//获取 2D 绘图上下文，以便在 canvas 上进行 2D 绘图操作
       const alpha = 0.1; // 阻尼系数
 
       // 为画布添加鼠标事件监听器
@@ -51,6 +51,8 @@ export default {
       canvas.addEventListener("wheel", this.onMouseWheel);
 
       // 模拟步骤函数
+      //原始数据格式node:{id:xx,group:xx}
+      //links:{source:xx,target:xx,value:xx}
       const simulationStep = () => {
         // 计算连线的力
         this.links.forEach(link => {
@@ -58,13 +60,14 @@ export default {
           const target = this.nodes.find(n => n.id === link.target);
           const dx = target.x - source.x;
           const dy = target.y - source.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const force = (distance - 100) / distance * 0.1; // 理想距离是100
+          const distance = Math.sqrt(dx * dx + dy * dy);//用勾股定理计算两点间距离
+          const force = (distance - 100) / distance * 0.1; // 理想距离是100 这里的力是吸引力，如果距离大于100，力为正，表示吸引；如果距离小于100，力为负，表示排斥。
 
           const fx = force * dx;
           const fy = force * dy;
 
-          // 如果节点没有固定位置，更新速度
+          // 如果节点没有固定位置，更新速度 
+          // 源节点的速度增加力的分量，目标节点的速度减少力的分量，以模拟节点之间的相互作用。
           if (!source.fx) {
             source.vx += fx;
             source.vy += fy;
@@ -82,12 +85,17 @@ export default {
             const dx = nodeB.x - nodeA.x;
             const dy = nodeB.y - nodeA.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < 20) { // 最小距离20
+            if (distance < 20) { // 最小距离20 如果节点之间的距离小于 20（最小距离），则需要调整节点位置以防止重叠。
+              // 计算节点间的角度 angle，使用 Math.atan2(dy, dx)。
               const angle = Math.atan2(dy, dx);
+              // 计算需要移动的距离 moveDistance，即 (20 - distance) / 2，表示每个节点需要移动的距离。
               const moveDistance = (20 - distance) / 2;
+              // 计算每个节点在 x 轴和 y 轴上需要移动的距离 moveX 和 moveY。
               const moveX = Math.cos(angle) * moveDistance;
               const moveY = Math.sin(angle) * moveDistance;
               
+              //如果节点 nodeA 没有被固定（fx 为 null），则更新其位置，使其向远离 nodeB 的方向移动。
+              // 如果节点 nodeB 没有被固定（fx 为 null），则更新其位置，使其向远离 nodeA 的方向移动。
               if (!nodeA.fx) {
                 nodeA.x -= moveX;
                 nodeA.y -= moveY;
@@ -103,10 +111,10 @@ export default {
         // 更新节点位置和速度
         this.nodes.forEach(node => {
           if (!node.fx) {
-            node.vx *= alpha;
+            node.vx *= alpha;//乘上阻尼系数，用于减缓节点的速度，使其趋于稳定
             node.vy *= alpha;
 
-            node.x += node.vx;
+            node.x += node.vx; // 更新节点位置
             node.y += node.vy;
 
             // 防止节点超出画布边界
@@ -125,9 +133,9 @@ export default {
 
       simulationStep();
     },
-    render(ctx) {
+    render(ctx) { // 渲染画布
       ctx.clearRect(0, 0, this.width, this.height);  // 清除画布
-      ctx.save();
+      ctx.save();//保存当前画布状态 确保在应用变换和绘制图形后，画布状态能够恢复到变换之前的状态，从而避免后续的绘图操作受到不必要的影响
       ctx.translate(this.transform.x, this.transform.y);  // 应用平移变换
       ctx.scale(this.transform.k, this.transform.k);  // 应用缩放变换
 
@@ -139,7 +147,7 @@ export default {
         ctx.beginPath();
         ctx.moveTo(source.x, source.y);
         ctx.lineTo(target.x, target.y);
-        ctx.strokeStyle = `rgba(0,0,0,${link.value / 10})`;
+        ctx.strokeStyle = `rgba(0,0,0,.3)`;
         ctx.lineWidth = 2;  // 固定边的粗细值
         ctx.stroke();
       });
@@ -156,11 +164,11 @@ export default {
 
       ctx.restore();
     },
-    getColor(group) {
+    getColor(group) { // 根据节点组获取颜色
       const colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"];
       return colors[group % colors.length];  // 根据组返回颜色
     },
-    onMouseDown(event) {
+    onMouseDown(event) { // 鼠标按下事件
       const mousePos = this.getMousePos(event);
       this.draggingNode = this.getNodeAtPos(mousePos);  // 检查鼠标点击位置是否在节点上
 
@@ -174,7 +182,7 @@ export default {
         this.lastMousePos = mousePos;
       }
     },
-    onMouseMove(event) {
+    onMouseMove(event) { // 鼠标移动事件
       const mousePos = this.getMousePos(event);
 
       if (this.draggingNode) {
@@ -192,7 +200,7 @@ export default {
         this.lastMousePos = mousePos;
       }
     },
-    onMouseUp() {
+    onMouseUp() { // 鼠标松开事件
       if (this.draggingNode) {
         // 释放节点
         this.draggingNode.fx = null;
@@ -202,7 +210,7 @@ export default {
         this.isPanning = false;  // 停止拖动画布
       }
     },
-    onMouseWheel(event) {
+    onMouseWheel(event) { // 鼠标滚轮事件
       const mousePos = this.getMousePos(event);
       const zoom = event.deltaY > 0 ? 0.9 : 1.1;
 
@@ -211,16 +219,16 @@ export default {
       this.transform.x = mousePos.x - (mousePos.x - this.transform.x) * zoom;
       this.transform.y = mousePos.y - (mousePos.y - this.transform.y) * zoom;
 
-      event.preventDefault();
+      event.preventDefault();  // 阻止默认滚轮事件
     },
-    getMousePos(event) {
+    getMousePos(event) { // 获取鼠标位置
       const rect = this.$refs.canvas.getBoundingClientRect();
       return {
         x: (event.clientX - rect.left - this.transform.x) / this.transform.k,
         y: (event.clientY - rect.top - this.transform.y) / this.transform.k
       };
     },
-    getNodeAtPos(pos) {
+    getNodeAtPos(pos) { // 获取鼠标点击位置的节点
       return this.nodes.find(node => {
         const dx = node.x - pos.x;
         const dy = node.y - pos.y;
